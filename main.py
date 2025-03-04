@@ -18,19 +18,30 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 525600  # 1 year
 # Static API Key that the client must send in a custom header (e.g., "X-API-KEY")
 API_KEY = "my_static_api_key"
 
+# Currency symbols mapping
+CURRENCY_SYMBOLS = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'INR': '₹',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'Fr',
+    'CNY': '¥',
+    'NZD': 'NZ$'
+}
+
 # -----------------------------------------------------------------------------
 # Pydantic Models
 # -----------------------------------------------------------------------------
-
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-
 class User(BaseModel):
     username: str
-
 
 # -----------------------------------------------------------------------------
 # OAuth2 and Dependency Functions for JWT Authentication
@@ -38,7 +49,6 @@ class User(BaseModel):
 
 # This will look for an Authorization header with a Bearer token.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     """
@@ -60,14 +70,12 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         raise credentials_exception
     return user
 
-
 def verify_api_key(x_api_key: str = Header(...)) -> None:
     """
     Dependency function that validates the API Key sent in the header 'X-API-KEY'.
     """
     if x_api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API Key")
-
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -80,7 +88,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
 
 # -----------------------------------------------------------------------------
 # Initialize FastAPI Application
@@ -96,7 +103,6 @@ app = FastAPI(
 # -----------------------------------------------------------------------------
 # Endpoints
 # -----------------------------------------------------------------------------
-
 
 @app.post("/login", response_model=Token, summary="Login to get a JWT token")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -122,7 +128,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         data={"sub": form_data.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
 
 @app.get("/convert", summary="Convert currency amounts using live exchange rates")
 def convert_currency(
@@ -166,16 +171,19 @@ def convert_currency(
         raise HTTPException(status_code=400, detail="Invalid currency codes")
 
     converted_amount = amount * target_rate
+    currency_symbol = CURRENCY_SYMBOLS.get(to_currency.upper(), to_currency.upper())
+    formatted_result = f"{converted_amount}{currency_symbol}"
+
     result = {
         "success": True,
         "from": from_currency.upper(),
         "to": to_currency.upper(),
         "amount": amount,
         "result": converted_amount,
+        "formatted_result": formatted_result,
         "rate": target_rate,
     }
     return result
-
 
 # -----------------------------------------------------------------------------
 # Run the Application (For local testing)
