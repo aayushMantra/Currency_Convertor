@@ -172,7 +172,7 @@ def convert_currency(
 
     converted_amount = amount * target_rate
     currency_symbol = CURRENCY_SYMBOLS.get(to_currency.upper(), to_currency.upper())
-    formatted_result = f"{converted_amount}{currency_symbol}"
+    formatted_result = f"{currency_symbol}{converted_amount}"
 
     result = {
         "success": True,
